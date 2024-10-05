@@ -8,13 +8,11 @@ from ultralytics import YOLO
 
 app = Flask(__name__)
 
-# Specify the path to the Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Update this path as needed
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 model = YOLO("best.pt")
 
-# Define regex patterns for various sensitive information
 bank_name_pattern = r'\b(?:Indian Bank|SBI|RBL Bank|HDFC|Axis Bank|ICICI|PNB|Bank of Baroda)\b'
-credit_card_pattern = r'\b(?:\d[ -]*?){13,16}\b'  # Regex pattern for credit card numbers
+credit_card_pattern = r'\b(?:\d[ -]*?){13,16}\b'
 address_pattern = r'\b\d{1,4}\s(?:[A-Za-z0-9#.-]+(?:\s(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Lane|Ln|Way|Terrace|Terr|Place|Pl|Circle|Cir|Square|Sq|Drive|Dr|Court|Ct|Close|Cl|Park|Pk|Highway|Hwy))?)\s*,?\s*(?:[A-Za-z\s]+(?:,\s*[A-Za-z\s]+)?)(?:-\d{5})?\b'
 phone_number_pattern = r'\+?\d{1,4}[-.\s]?(\(?\d{1,3}?\)?[-.\s]?)?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}'
 date_of_birth_pattern = r'\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b'
@@ -24,7 +22,6 @@ sexual_content_pattern = r'\b(?:sex|porn|adult|xxx|nsfw)\b'
 
 
 def preprocess_image(img):
-    """Preprocess the image for OCR."""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
@@ -36,27 +33,22 @@ def get_bbx(img):
 
 
 def blur_area(img, x, y, w, h):
-    """Blur the specified area in the image."""
     roi = img[y:y + h, x:x + w]
     blurred_roi = cv2.blur(roi, (25, 25))  # Use a kernel size of 25
     img[y:y + h, x:x + w] = blurred_roi
 
 
 def process_frame(img):
-    """Detect sensitive ID information in a single frame and blur it."""
     processed_image = preprocess_image(img)
     data = pytesseract.image_to_data(processed_image, output_type=Output.DICT)
     n_boxes = len(data['level'])
 
-    # Loop through each detected text box
     for i in range(n_boxes):
         text = data['text'][i].strip()
 
-        # Print the detected text for debugging
         if text:
             print(f"Detected text: '{text}' at ({data['left'][i]}, {data['top'][i]})")
 
-        # Regular expressions for sensitive patterns
         if re.search(date_of_birth_pattern, text):
             (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
             blur_area(img, x, y, w, h)
@@ -83,7 +75,6 @@ def process_frame(img):
 
 
 def process_image(image_path):
-    """Process the uploaded image file and save the result."""
     img = cv2.imread(image_path)
     processed_image = process_frame(img)
     output_path = 'output/blurred_image.jpg'
@@ -95,7 +86,6 @@ def process_image(image_path):
 
 
 def start_camera():
-    """Start the camera feed and process frames."""
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
